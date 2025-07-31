@@ -1,0 +1,92 @@
+# =====================
+# Node & Environment
+# =====================
+node_modules/
+.env*
+!.env.example
+!.env.sample
+!.env.local.example
+
+# =====================
+# Next.js Build Output
+# =====================
+.next/
+out/
+
+# =====================
+# Vercel Deployments
+# =====================
+.vercel/
+.vercel_build_output/
+
+# =====================
+# Supabase CLI & Local
+# =====================
+.supabase/
+supabase/.output/
+supabase/.temp/
+supabase/migrations/.shadow/
+supabase/config.toml
+
+# =====================
+# Docker
+# =====================
+Dockerfile
+docker-compose*.yml
+*.pid
+*.sock
+
+# =====================
+# Logs & Misc
+# =====================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+
+# =====================
+# OS / Editor Files
+# =====================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# =====================
+# GitHub Actions
+# =====================
+.github/secrets/
+*.env.github
+.env.github.example
+
+# =====================
+# Playwright
+# =====================
+playwright-report/
+test-results/
+*.pw.log
+
+# =====================
+# Cypress
+# =====================
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+
+# =====================
+# Stripe CLI
+# =====================
+.stripe/
+stripe-cli.log
+
+# =====================
+# SQLite (if used for local dev)
+# =====================
+*.sqlite
+*.sqlite3
