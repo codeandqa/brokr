@@ -1,74 +1,128 @@
-// supabase/functions/create-trial-org/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.6'
+
+console.log(`🟢 Edge Function 'create-trial-org' running`)
 
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    // Handle preflight CORS
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      },
+    })
+  }
+
   try {
-    const body = await req.json()
-    console.log('[DEBUG] Raw Body:', body)
+    const { orgName, user_id, email } = await req.json()
 
-    const { org_name, user_id, user_email } = body
+    console.log('📨 Received orgName:', orgName)
+    console.log('👤 user_id:', user_id)
 
-    if (!org_name || !user_id || !user_email) {
-      console.error('[DEBUG] Missing field(s):', { org_name, user_id, user_email })
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 })
-    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    console.log('[DEBUG] Creating organization:', org_name)
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .insert({ name: org_name })
-      .select()
-      .single()
-
-    if (orgError || !org) {
-      console.error('[DEBUG] Org insert error:', orgError)
-      return new Response(JSON.stringify({ error: 'Failed to create organization' }), { status: 500 })
-    }
-
-    console.log('[DEBUG] Inserting user:', user_email)
-    const { error: userError } = await supabase.from('users').insert({
-      id: user_id,
-      email: user_email,
-      role: 'admin'
-    })
-    if (userError) {
-      console.error('[DEBUG] User insert error:', userError)
-    }
-
-    console.log('[DEBUG] Linking user to org')
-    const { error: memberError } = await supabase.from('org_members').insert({
-      user_id,
-      org_id: org.id,
-      role: 'admin'
-    })
-    if (memberError) {
-      console.error('[DEBUG] Org member insert error:', memberError)
-    }
-
-    console.log('[DEBUG] Creating trial subscription')
-    const trialEnd = new Date()
-    trialEnd.setDate(trialEnd.getDate() + 30)
-
-    const { error: subError } = await supabase.from('subscriptions').insert({
-      org_id: org.id,
-      plan: 'trial',
-      status: 'active',
-      trial_ends_at: trialEnd.toISOString()
+    let response = await fetch(`${supabaseUrl}/rest/v1/organizations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        name: orgName,
+        plan: 'trial',
+        status: 'active',
+        created_by: user_id
+      })
     })
 
-    if (subError) {
-      console.error('[DEBUG] Subscription insert error:', subError)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Org creation failed:', errorText)
+      return new Response(JSON.stringify({ error: 'Failed to create org: ' + errorText }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      })
     }
 
-    return new Response(JSON.stringify({ success: true, org_id: org.id }))
-  } catch (err) {
-    console.error('[DEBUG] Unhandled error:', err)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 })
+    const org = await response.json()
+    console.log('✅ Org created:', org)
+
+
+    ///sdfsdfsd
+    console.log('📨 Creating user with ID:', user_id, 'and email:', email)
+    response = await fetch(`${supabaseUrl}/rest/v1/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        
+        id: user_id,
+        email: email,
+        role: 'admin',
+        org_id: org.id
+      })
+    })
+    console.log('📨 User creation response status:', response.status)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ user creation failed:', errorText)
+      return new Response(JSON.stringify({ error: 'Failed to create user: ' + errorText }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      })
+    }
+
+    const user = await response.json()
+    console.log('✅ User added:', user)
+
+    ///sdfsdfsdf
+
+console.log('📨 Creating user with ID:', user_id, 'and org:', org.id)
+    response = await fetch(`${supabaseUrl}/rest/v1/org_members`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        
+        user_id: user_id,
+        org_id: org.id,
+        role: 'admin'
+      })
+    })
+    console.log('📨 User creation response status:', response.status)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ user creation failed:', errorText)
+      return new Response(JSON.stringify({ error: 'Failed to create user: ' + errorText }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      })
+    }
+
+
+    
+    return new Response(JSON.stringify({ message: 'Trial org created successfully' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    })
+  } catch (e) {
+    console.error('❌ Unexpected error:', e)
+    return new Response(JSON.stringify({ error: 'Unexpected server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    })
   }
 })
