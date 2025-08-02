@@ -36,7 +36,7 @@ export default function BillingPage() {
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
-      .eq('organization_id', orgMember.org_id)
+      .eq('org_id', orgMember.org_id)
       .single()
 
     if (error) {
