@@ -31,3 +31,18 @@ RESET ALL;
 -- alter table organizations
 -- add column if not exists last_modified_date timestamptz default now();
 -- alter table organizations drop constraint organizations_created_by_fkey;
+-- org id : 3924fe74-1c49-442c-a251-1c69345cbd2c
+-- user id: ce1edb94-147c-47dd-abb9-509ea263f4ee
+-- org_id is missing in the org_members table, so we need to add it. 
+-- update the subscritions table to use org_id instead of organization_id. 
+
+
+-- I had to apply this policiuy on org:  because dashboard was not shwing the org info.
+-- -- Enable RLS if not already
+-- ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+
+-- -- Create policy to allow SELECT
+-- CREATE POLICY "Allow select for logged-in users"
+--   ON organizations
+--   FOR SELECT
+--   USING (auth.uid() IS NOT NULL);
