@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabaseClient'
 import AuthGuard from '../components/AuthGuard'
 import { useSession } from '@supabase/auth-helpers-react'
 
-
 export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [org, setOrg] = useState(null)
