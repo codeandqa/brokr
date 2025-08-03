@@ -356,7 +356,7 @@ CREATE TABLE IF NOT EXISTS "public"."subscriptions" (
     "trial_ends_at" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    CONSTRAINT "subscriptions_plan_check" CHECK (("plan" = ANY (ARRAY['free'::"text", 'pro'::"text", 'enterprise'::"text"]))),
+    CONSTRAINT "subscriptions_plan_check" CHECK (("plan" = ANY (ARRAY['trial'::"text", 'pro'::"text", 'enterprise'::"text"]))),
     CONSTRAINT "subscriptions_status_check" CHECK (("status" = ANY (ARRAY['active'::"text", 'trialing'::"text", 'past_due'::"text", 'canceled'::"text"])))
 );
 
@@ -956,32 +956,45 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
--- Add created_by column after organizations table is created
--- alter table organizations
--- add column if not exists created_by uuid references users(id);
+-- Add created_by column to organizations table if not exists
+ALTER TABLE "public"."organizations"
+ADD COLUMN IF NOT EXISTS "created_by" uuid REFERENCES "public"."users"("id");
 
--- You can also add additional audit fields here if needed
--- alter table organizations
--- add column if not exists last_modified_date timestamptz default now();
--- alter table organizations
--- add column if not exists status text default 'trial';
+-- Add last_modified_date column to organizations table if not exists
+ALTER TABLE "public"."organizations"
+ADD COLUMN IF NOT EXISTS "last_modified_date" timestamptz DEFAULT now();
+
+-- Add status column to organizations table if not exists
+ALTER TABLE "public"."organizations"
+ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'trial';
+
+
+alter table "public"."organizations" enable row level security;
+
+create policy "Org creators can read" on "public"."organizations"
+  for select using (
+    auth.uid() = "created_by"
+  );
+
+
+-- Prevent insert if trial expired (stage_tasks)
+-- CREATE POLICY "Prevent insert if trial expired (stage_tasks)" ON "public"."stage_tasks"
+-- FOR INSERT
+-- WITH CHECK (
+--   (
+--     SELECT
+--       CASE
+--         WHEN (("s"."plan" = 'trialing') AND ("s"."trial_ends_at" < now())) THEN false
+--         ELSE true
+--       END
+--     FROM "public"."deals" "d"
+--     JOIN "public"."subscriptions" "s" ON ("s"."org_id" = "d"."org_id")
+--     WHERE "d"."id" = "stage_tasks"."deal_id"
+--   )
+-- );
+
+-- ...existing policies, RLS enables, and grants...
+
 
 
 RESET ALL;
--- CREATE POLICY "Prevent insert if trial expired (stage_tasks)" ON "public"."stage_tasks" FOR INSERT WITH CHECK (( SELECT
---         CASE
---             WHEN (("s"."plan" = 'trialing'::"text") AND ("s"."trial_ends_at" < "now"())) THEN false
---             ELSE true
---         END AS "case"
---    FROM ("public"."deals" "d"
---      JOIN "public"."subscriptions" "s" ON (("s"."org_id" = "d"."org_id")))
---   WHERE ("d"."id" = "stage_tasks"."deal_id")));
--- CREATE POLICY "Prevent insert if trial expired (stage_tasks)" ON "public"."stage_tasks" FOR INSERT WITH CHECK (( SELECT
---         CASE
---             WHEN (("s"."plan" = 'trialing'::"text") AND ("s"."trial_ends_at" < "now"())) THEN false
---             ELSE true
---         END AS "case"
---     FROM ("public"."deals" "d"
---       JOIN "public"."subscriptions" "s" ON (("s"."org_id" = "d"."org_id")))
---   WHERE ("d"."id" = "stage_tasks"."deal_id")));
-

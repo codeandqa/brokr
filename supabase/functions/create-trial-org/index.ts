@@ -23,12 +23,47 @@ serve(async (req) => {
     const { orgName, user_id, email } = await req.json()
 
     console.log('📨 Received orgName:', orgName)
-    console.log('👤 user_id:', user_id)
+    console.log('👤 Full Name:', email)
+
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    let response = await fetch(`${supabaseUrl}/rest/v1/organizations`, {
+    //1. create user if not exists.
+    console.log('📨 Creating user with ID:', user_id, 'and email:', email);
+
+    let response = await fetch(`${supabaseUrl}/rest/v1/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        
+        id: user_id,
+        email: email,
+        role: 'admin',
+      })
+    })
+    
+    const user = await response.json()
+    console.log('✅ User created:', user)     
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ user creation failed:', errorText)
+      return new Response(JSON.stringify({ error: 'Failed to create user: ' + errorText }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      })
+    }
+
+    //2. create org if not exists.
+    console.log('📨 Creating organization with name:', orgName)
+
+    response = await fetch(`${supabaseUrl}/rest/v1/organizations`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -40,7 +75,7 @@ serve(async (req) => {
         name: orgName,
         plan: 'trial',
         status: 'active',
-        created_by: user_id
+        created_by: user[0].id
       })
     })
 
@@ -58,35 +93,7 @@ serve(async (req) => {
     console.log('✅ Org created:', org)
 
 
-    ///add user to users table.
-    response = await fetch(`${supabaseUrl}/rest/v1/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Prefer': 'return=representation'
-      },
-      body: JSON.stringify({
-        
-        id: user_id,
-        email: email,
-        role: 'admin',
-        org_id: org[0].id
-      })
-    })
     
-    const user = await response.json()
-    console.log('✅ User created:', user)     
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ user creation failed:', errorText)
-      return new Response(JSON.stringify({ error: 'Failed to create user: ' + errorText }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      })
-    }
 
     console.log('📨 Creating user with ID:', user_id, 'and org:', org[0].id)
 
@@ -103,7 +110,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         
-        user_id: user_id,
+        user_id: user[0].id,
         org_id: org[0].id,
         role: 'admin'
       })
@@ -143,16 +150,18 @@ serve(async (req) => {
     })
     
     const subscriptions = await response.json()
-    console.log('✅ subscriptions created:', subscriptions)     
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ user creation failed:', errorText)
+      console.error('❌ subscriptions creation failed:', errorText)
       return new Response(JSON.stringify({ error: 'Failed to create user: ' + errorText }), {
         status: 500,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       })
+
     }
+    console.log('✅ subscriptions created:', subscriptions)     
+
     return new Response(JSON.stringify({ message: 'Trial org created successfully' }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
